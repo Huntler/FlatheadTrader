@@ -1,0 +1,11 @@
+name: flathead
+
+dependencies:
+  - python=3.9
+  - pytorch
+  - torchvision
+  - transformers
+  - requests
+  - beautifulsoup4
+  - pandas
+  - numpy
