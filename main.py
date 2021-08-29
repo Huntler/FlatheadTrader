@@ -1,34 +1,24 @@
-from datetime import date, datetime
-from os import stat
-import sqlite3
-from typing import List, Tuple
-import feedparser
-from feedparser.util import FeedParserDict
+from datetime import datetime
+import time
 
-from news_scraper.news import News, create_news
-from database.flathead import FlatheadData
+from news_scraper.feed import Feed
+from database.flathead import db
 
 # get current news using RSS feed
-newsfeed = feedparser.parse(
-    "http://www.stern.de/feed/standard/alle-nachrichten/")
-news = [News(rss_entry=entry) for entry in newsfeed.entries]
-
-db = FlatheadData()
-
-# only news that are not stored are saved
-for n in news:
-    db.store_news(news=n)
+stern_feed = Feed(name="stern", url="http://www.stern.de/feed/standard/alle-nachrichten/", update_interval=5)
+spiegel_feed = Feed(name="spiegel", url="https://www.spiegel.de/schlagzeilen/index.rss", update_interval=3)
 
 # testing a bit
-a_date = datetime(2021, 8, 25)
+a_date = datetime(2021, 8, 29)
 newsofdate = db.get_news_by_date(date=a_date)
 print(f"Amount of news, {a_date.strftime('%Y-%m-%d')}: {len(newsofdate)}")
 print()
 
+time.sleep(6)
 # tags = db.get_all_tags()
 # print("; ".join(tags))
 
-tag = "IS"
+tag = "Deals des Tages"
 print(f"'{tag}' related news on dates")
 newsoftag = db.get_news_by_tag(tag=tag)
 for n in newsoftag:

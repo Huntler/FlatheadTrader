@@ -1,13 +1,19 @@
 from os import stat
 from news_scraper.news import News, create_news
 import sqlite3
+from threading import Lock
 from datetime import datetime
 from typing import List
 
 
 class FlatheadData:
     def __init__(self, db_location: str = "flathead.db") -> None:
-        self._connection = sqlite3.connect(db_location)
+        self._db_location = db_location
+        self._connect()
+        self._lock = Lock()
+
+    def _connect(self) -> None:
+        self._connection = sqlite3.connect(self._db_location, check_same_thread=False)
         self._c = self._connection.cursor()
 
     def store_news(self, news: News) -> None:
@@ -17,49 +23,51 @@ class FlatheadData:
         n_id = self._c.fetchone()
         if n_id is not None:
             return
+        
+        with self._lock:
 
-        # insert a news object to the news table
-        news_tuple = (news.hash_id, news.title, news.text, news.date.hour,
-                      news.date.minute, news.date.second)
-        self._c.execute(
-            '''INSERT INTO News(hash_id, title, text, hour, minute, second) VALUES(?,?,?,?,?,?)''', news_tuple)
-        news_id = self._c.lastrowid
-
-        # insert the related tags
-        tags_id = []
-        for tag in news.tags:
-            self._c.execute('''SELECT id FROM Tag WHERE tag=?''', (tag,))
-            t_id = self._c.fetchone()
-
-            if t_id is None:
-                self._c.execute(
-                    '''INSERT OR IGNORE INTO Tag(tag) VALUES(?)''', (tag,))
-                tags_id.append(self._c.lastrowid)
-            else:
-                tags_id.append(t_id[0])
-
-        # insert the date
-        self._c.execute('''SELECT id FROM Date WHERE year=? AND month=? AND day=?''',
-                        (news.date.year, news.date.month, news.date.day))
-        d_id = self._c.fetchone()
-
-        if d_id is None:
-            self._c.execute('''INSERT INTO Date(year, month, day) VALUES(?,?,?)''',
-                            (news.date.year, news.date.month, news.date.day))
-            date_id = self._c.lastrowid
-        else:
-            date_id = d_id[0]
-
-        # connect news table to tag and date table
-        for tag_id in tags_id:
+            # insert a news object to the news table
+            news_tuple = (news.hash_id, news.title, news.text, news.date.hour,
+                        news.date.minute, news.date.second)
             self._c.execute(
-                '''INSERT INTO TagsOnNews VALUES(?,?)''', (tag_id, news_id))
+                '''INSERT INTO News(hash_id, title, text, hour, minute, second) VALUES(?,?,?,?,?,?)''', news_tuple)
+            news_id = self._c.lastrowid
 
-        self._c.execute(
-            '''INSERT INTO NewsOnDate VALUES(?,?)''', (news_id, date_id))
+            # insert the related tags
+            tags_id = []
+            for tag in news.tags:
+                self._c.execute('''SELECT id FROM Tag WHERE tag=?''', (tag,))
+                t_id = self._c.fetchone()
 
-        # write changes
-        self._connection.commit()
+                if t_id is None:
+                    self._c.execute(
+                        '''INSERT OR IGNORE INTO Tag(tag) VALUES(?)''', (tag,))
+                    tags_id.append(self._c.lastrowid)
+                else:
+                    tags_id.append(t_id[0])
+
+            # insert the date
+            self._c.execute('''SELECT id FROM Date WHERE year=? AND month=? AND day=?''',
+                            (news.date.year, news.date.month, news.date.day))
+            d_id = self._c.fetchone()
+
+            if d_id is None:
+                self._c.execute('''INSERT INTO Date(year, month, day) VALUES(?,?,?)''',
+                                (news.date.year, news.date.month, news.date.day))
+                date_id = self._c.lastrowid
+            else:
+                date_id = d_id[0]
+
+            # connect news table to tag and date table
+            for tag_id in tags_id:
+                self._c.execute(
+                    '''INSERT INTO TagsOnNews VALUES(?,?)''', (tag_id, news_id))
+
+            self._c.execute(
+                '''INSERT INTO NewsOnDate VALUES(?,?)''', (news_id, date_id))
+
+            # write changes
+            self._connection.commit()
 
     def get_news_by_id(self, val, key: str = "id") -> News:
         # check if the entry refers to a key in News
@@ -122,6 +130,8 @@ class FlatheadData:
         return news
 
     def delete_news(self, news: News) -> None:
+        # with self._lock:
+        #     pass
         pass
 
     def get_all_tags(self) -> List:
@@ -132,3 +142,6 @@ class FlatheadData:
         self._c.execute(statement)
         tags = [t[0] for t in self._c.fetchall()]
         return tags
+
+
+db = FlatheadData()
