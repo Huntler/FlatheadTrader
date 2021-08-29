@@ -25,7 +25,10 @@ newsofdate = db.get_news_by_date(date=a_date)
 print(f"Amount of news, {a_date.strftime('%Y-%m-%d')}: {len(newsofdate)}")
 print()
 
-tag = "CDU"
+# tags = db.get_all_tags()
+# print("; ".join(tags))
+
+tag = "IS"
 print(f"'{tag}' related news on dates")
 newsoftag = db.get_news_by_tag(tag=tag)
 for n in newsoftag:

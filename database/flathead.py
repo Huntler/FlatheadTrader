@@ -1,3 +1,4 @@
+from os import stat
 from news_scraper.news import News, create_news
 import sqlite3
 from datetime import datetime
@@ -122,3 +123,12 @@ class FlatheadData:
 
     def delete_news(self, news: News) -> None:
         pass
+
+    def get_all_tags(self) -> List:
+        statement = f'''
+        SELECT tag FROM Tag
+        '''
+
+        self._c.execute(statement)
+        tags = [t[0] for t in self._c.fetchall()]
+        return tags
